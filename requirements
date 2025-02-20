@@ -1,144 +1,168 @@
-1. Functional Requirements
-
-1.1 Operations with Books
-
-GET /books
-Returns a list of all books with the ability to filter by the following parameters:
-author_id — filter by author.
-category_id — filter by category.
-title — search by title.
-Pagination: The results should be paginated using the page (page number) and size (number of items per page) parameters.
-Response format:
-json
-{
-  "page": 1,
-  "size": 10,
-  "total": 50,
-  "books": [...]
-}
-
-GET /books/{id}
-Returns the details of a specific book by its ID.
-Response format:
-json
-{
-  "id": 1,
-  "title": "The Catcher in the Rye",
-  "author": "J.D. Salinger",
-  "category": "Fiction",
-  "published_date": "1951-07-16",
-  "isbn": "978-0-316-76948-0"
-}
-
-POST /books
-Adds a new book to the catalog.
-Request requirements:
-Parameters such as title, author_id, category_id, published_date, and isbn.
-Request format:
-json
-{
-  "title": "New Book",
-  "author_id": 2,
-  "category_id": 1,
-  "published_date": "2022-05-01",
-  "isbn": "978-1-234-56789-0"
-}
-
-PUT /books/{id}
-
-Updates the data of an existing book by its ID.
-Request format:
-json
-{
-  "title": "Updated Book Title",
-  "author_id": 2,
-  "category_id": 1,
-  "published_date": "2022-06-01",
-  "isbn": "978-1-234-56789-1"
-}
-
-DELETE /books/{id}
-Deletes a book by its ID.
+Functional Requirements
+    • Display a list of books with title, author, and genre.
+    • Provide a search bar to filter books by title or author.
+    • Provide a dropdown menu to filter books by genre.
+    • Dynamically update the displayed book list based on search and filter criteria.
+Non-Functional Requirements
+    • The webpage should load quickly and function smoothly.
+    • The design should be responsive to ensure usability on different screen sizes.
 
 
-1.2 Operations with Authors
+Model and operations description
+Entities:
+1. Book
+   - id (integer, unique identifier)
+   - title (string, book title)
+   - author (string, author name)
+   - year (integer, publication year)
+   - links (array of HATEOAS links)
 
-GET /authors
+Authentication:
+- The API uses JWT (JSON Web Token) for authentication.
+- Clients must include a valid JWT token in the `Authorization` header for protected endpoints.
+- Example: `Authorization: Bearer <token>`
+- JWT Structure:
+  {
+    "alg": "HS256",
+    "typ": "JWT"
+  }
+  {
+    "sub": "userId",
+    "role": "admin",
+    "exp": 1715000000
+  }
 
-Returns a list of all authors.
-GET /authors/{id}
+Endpoints:
 
-Returns the details of a specific author by their ID.
-POST /authors
+1. Get all books (paginated):
+   GET /api/v1/books?page={page}&size={size}
+   Headers: 
+   - Authorization: Bearer <token>
+   - Cache-Control: public, max-age=300
+   - If-None-Match: <etag>  # If client has cached ETag
+   Response: 
+   - 200 OK:
+     Cache-Control: public, max-age=300
+     ETag: "abc123"
+     Content-Type: application/json
+     [{
+        "id": 1, "title": "1984", "author": "George Orwell", "year": 1949,
+        "links": [
+           {"rel": "self", "href": "/api/v1/books/1"},
+           {"rel": "update", "href": "/api/v1/books/1"},
+           {"rel": "delete", "href": "/api/v1/books/1"}
+        ]
+     }, ...]
+   - 304 Not Modified (if cached ETag matches)
+   - 401 Unauthorized
 
-Adds a new author.
-PUT /authors/{id}
+2. Get a book by ID:
+   GET /api/v1/books/{bookId}
+   Headers: 
+   - Authorization: Bearer <token>
+   - Cache-Control: public, max-age=300
+   - If-None-Match: <etag>  # If client has cached ETag
+   Response: 
+   - 200 OK:
+     Cache-Control: public, max-age=300
+     ETag: "abc123"
+     Last-Modified: Mon, 19 Feb 2025 12:00:00 GMT
+     Content-Type: application/json
+     {
+        "id": 1, "title": "1984", "author": "George Orwell", "year": 1949,
+        "links": [
+           {"rel": "self", "href": "/api/v1/books/1"},
+           {"rel": "update", "href": "/api/v1/books/1"},
+           {"rel": "delete", "href": "/api/v1/books/1"}
+        ]
+     }
+   - 304 Not Modified (if cached ETag matches)
+   - 404 Not Found
+   - 401 Unauthorized
 
-Updates an author's details.
-DELETE /authors/{id}
-Deletes an author.
+3. Get books by author (paginated):
+   GET /api/v1/books?author={authorName}&page={page}&size={size}
+   Headers:
+   - Authorization: Bearer <token>
+   - Cache-Control: public, max-age=300
+   - If-None-Match: <etag>  # If client has cached ETag
+   Response:
+   - 200 OK:
+     Cache-Control: public, max-age=300
+     ETag: "def456"
+     Content-Type: application/json
+     [{
+        "id": 2, "title": "Animal Farm", "author": "George Orwell", "year": 1945, "links": [
+           {"rel": "self", "href": "/api/v1/books/2"},
+           {"rel": "update", "href": "/api/v1/books/2"},
+           {"rel": "delete", "href": "/api/v1/books/2"}
+        ]
+     }, ...]
+   - 304 Not Modified (if cached ETag matches)
+   - 401 Unauthorized
 
-1.3 Operations with Categories
+4. Add a new book:
+   POST /api/v1/books
+   Headers:
+   - Authorization: Bearer <token>
+   - Content-Type: application/json
+   Request Body:
+   {"title": "New Book", "author": "Author Name", "year": 2024}
+   Response:
+   - 201 Created:
+     Cache-Control: no-store
+     Content-Type: application/json
+     {
+        "id": 3, "title": "New Book", "author": "Author Name", "year": 2024,
+        "links": [
+           {"rel": "self", "href": "/api/v1/books/3"},
+           {"rel": "update", "href": "/api/v1/books/3"},
+           {"rel": "delete", "href": "/api/v1/books/3"}
+        ]
+     }
+   - 400 Bad Request
+   - 401 Unauthorized
 
-GET /categories
-Returns a list of all book categories.
+5. Update an existing book:
+   PUT /api/v1/books/{bookId}
+   Headers:
+   - Authorization: Bearer <token>
+   - Content-Type: application/json
+   Request Body:
+   {"title": "Updated Title", "author": "Updated Author", "year": 2025}
+   Response:
+   - 200 OK:
+     Cache-Control: no-store
+     Content-Type: application/json
+     {
+        "id": 1, "title": "Updated Title", "author": "Updated Author", "year": 2025,
+        "links": [
+           {"rel": "self", "href": "/api/v1/books/1"},
+           {"rel": "update", "href": "/api/v1/books/1"},
+           {"rel": "delete", "href": "/api/v1/books/1"}
+        ]
+     }
+   - 400 Bad Request
+   - 401 Unauthorized
+   - 404 Not Found
 
-GET /categories/{id}
-Returns the details of a specific category.
+6. Delete a book:
+   DELETE /api/v1/books/{bookId}
+   Headers:
+   - Authorization: Bearer <token>
+   Response:
+   - 200 OK: {"message": "Book deleted"}
+   - 401 Unauthorized
+   - 404 Not Found
 
-POST /categories
-Adds a new category.
+Error Handling:
+- 400 Bad Request: Invalid input or missing required fields.
+- 401 Unauthorized: Missing or invalid JWT token.
+- 403 Forbidden: User lacks necessary permissions.
+- 404 Not Found: Resource does not exist.
+- 500 Internal Server Error: Unexpected server failure.
 
-PUT /categories/{id}
-Updates a category.
-
-DELETE /categories/{id}
-Deletes a category.
-
-2. Non-functional Requirements
-
-2.1 Pagination
-All methods that return lists of items should support pagination using the page and size parameters. This helps reduce server load and improves efficiency for large datasets.
-
-2.2 Caching
-Methods that return large datasets (such as GET /books, GET /authors, GET /categories) should support caching. Caching will be handled at the server level, storing the results of queries for a short period (e.g., 5 minutes) to reduce load.
-Cache these requests with the Cache-Control header.
-
-2.3 Authentication
-For secured resources (such as adding, updating, or deleting books), JWT (JSON Web Tokens) should be used for authentication.
-Requests to protected resources should include the token in the Authorization header in the format: Bearer <token>.
-Authentication methods should be described, including how to obtain a token.
-
-2.4 Error Handling and Status Codes
-Response status codes should be properly described:
-200 OK — request was successful.
-201 Created — resource was successfully created.
-204 No Content — resource was successfully deleted.
-400 Bad Request — incorrect request (invalid data).
-401 Unauthorized — user is not authorized.
-404 Not Found — resource not found.
-500 Internal Server Error — error on the server side.
-
-2.5 Data Models
-JSON should be used for all requests and responses.
-All resources (books, authors, categories) should be represented using clear and structured JSON objects.
-
-2.6 Logging
-The API should have a logging mechanism to track errors, anomalies, and monitor resource usage.
-
-2.7 Security
-Implement protections against SQL injections, XSS, CSRF, and other potential vulnerabilities.
-All sensitive data, such as passwords and tokens, should be stored in encrypted form.
-
-3. API Model
-
-3.1 REST Principles
-GET — to retrieve information.
-POST — to create new records.
-PUT — to update existing records.
-DELETE — to delete records.
-
-3.2 Richardson Maturity Model:
-Level 1: Clear and appropriate URI for each resource (/books, /authors, /categories).
-Level 2: Correct HTTP methods are used for the operations (GET, POST, PUT, DELETE).
-Level 3: HATEOAS is used to provide relevant links between resources (e.g., information about the author can be included in a book resource response via a link to the author resource).
+Caching Notes:
+- **GET requests** are cached with a maximum age of 5 minutes (`max-age=300`).
+- **POST, PUT, DELETE requests** have `Cache-Control: no-store` to prevent caching, as they modify data.
+- **ETag** and **Last-Modified** headers are used to optimize cache validation for **GET requests**.
